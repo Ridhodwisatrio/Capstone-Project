@@ -1,0 +1,124 @@
+import pandas as pd
+import numpy as np
+import joblib
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
+from tensorflow.keras.layers import Dense, Dropout, BatchNormalization
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import classification_report
+
+# Load Data
+X_train = pd.read_csv('../data/X_train_smote_HighBP.csv')
+y_train = pd.read_csv('../data/y_train_smote_HighBP.csv').values.flatten()
+df_test = pd.read_csv('../data/data_test_clean.csv')
+target = 'HighBP'
+df_test_clean = df_test.dropna(subset=[target]).copy()
+
+fitur = [
+    'Age', 'Sex', 'BMI', 'GenHlth', 'MentHlth', 'PhysHlth',
+    'DiffWalk', 'CholCheck', 'Smoker', 'PhysActivity',
+    'Fruits', 'Veggies', 'HvyAlcoholConsump'
+]
+
+X_train_df = X_train[fitur].copy()
+
+# Feature Engineering
+# Feature engineering untuk data train
+X_train_df['Age_CholCheck'] = X_train_df['Age'] * X_train_df['CholCheck']
+X_train_df['Stress_Physical_Index'] = X_train_df['MentHlth'] * X_train_df['PhysHlth']
+X_train_df['BMI_Alcohol'] = X_train_df['BMI'] * X_train_df['HvyAlcoholConsump']
+
+# Menerapkan feature engineering yang sama untuk data test
+df_test_clean['Age_CholCheck'] = df_test_clean['Age'] * df_test_clean['CholCheck']
+df_test_clean['Stress_Physical_Index'] = df_test_clean['MentHlth'] * df_test_clean['PhysHlth']
+df_test_clean['BMI_Alcohol'] = df_test_clean['BMI'] * df_test_clean['HvyAlcoholConsump']
+
+# Merubah menjadi matriks 16 kolom
+fitur_lengkap = fitur + ['Age_CholCheck', 'Stress_Physical_Index', 'BMI_Alcohol']
+X_train_raw = X_train_df[fitur_lengkap].values
+X_test_raw = df_test_clean[fitur_lengkap].values
+y_test = df_test_clean[target].values.astype(np.int32).flatten()
+
+# Normalisasi fitur
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train_raw)
+X_test_scaled = scaler.transform(X_test_raw)
+joblib.dump(scaler, "../model/scaler_HighBP.pkl")
+
+# Build Model
+def build_model(input_dim):
+    model = keras.Sequential([
+        keras.layers.Input(shape=(input_dim,)),
+
+        keras.layers.Dense(256, activation='relu'),
+        keras.layers.BatchNormalization(),
+        keras.layers.Dropout(0.4),
+
+        keras.layers.Dense(128, activation='relu'),
+        keras.layers.BatchNormalization(),
+        keras.layers.Dropout(0.3),
+
+        keras.layers.Dense(64, activation='relu'),
+        keras.layers.Dense(1, activation='sigmoid')
+    ])
+    model.compile(
+        optimizer=keras.optimizers.Adam(learning_rate=0.0005),
+        loss='binary_crossentropy',
+        metrics=['accuracy']
+    )
+    return model
+
+# Penerapan Callbacks
+early_stop = EarlyStopping(
+    monitor='val_loss',
+    patience=10,
+    restore_best_weights=True
+)
+
+reduce_lr = ReduceLROnPlateau(
+    monitor='val_loss',
+    factor=0.2,
+    patience=5,
+    min_lr=1e-5
+)
+
+callbacks_list = [early_stop, reduce_lr]
+
+# Training Model
+def train_model(X_train, y_train, X_test, y_test, epochs=50):
+
+    model = build_model(input_dim=X_train.shape[1])
+
+    print("\n--- Training Hipertensi---")
+    history = model.fit(
+        X_train,
+        y_train,
+        epochs=epochs,
+        batch_size=64,
+        validation_data=(X_test, y_test),
+        callbacks=callbacks_list,
+        verbose=1
+    )
+    print("--- Training Selesai ---\n")
+
+    results = model.evaluate(X_test, y_test, verbose=1)
+
+    test_loss = results[0]
+    test_accuracy = results[1]
+
+    y_pred_prob = model.predict(X_test)
+    y_pred = (y_pred_prob > 0.52).astype(int).flatten()
+
+    target_names = ['Non-HighBP (Sehat)', 'HighBP']
+    print("\n=== PERFORMANCE PENYAKIT HIPERTENSI ===")
+    print(classification_report(y_test, y_pred, target_names=target_names))
+
+    print(f"Accuracy: {test_accuracy:.4f}")
+    print(f"Loss: {test_loss:.4f}")
+
+    return model, history
+
+trained_model, history = train_model(X_train=X_train_scaled, y_train=y_train, X_test=X_test_scaled, y_test=y_test, epochs=20)
+
+trained_model.save("../model/HighBP_model.keras")
