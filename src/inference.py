@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 import pandas as pd
 import joblib
+import os
 
 # Variable untuk 13 fitur
 AGE = 9.0
@@ -19,20 +20,23 @@ VEGGIES = 1.0
 HVY_ALCOHOL = 0.0
 
 def main():
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    model_dir = os.path.join(base_dir, "model")
+
     models = {
-        'Diabetes'        :  tf.keras.models.load_model("../model/Diabetes_binary_model.keras"),
-        'Penyakit Jantung':  tf.keras.models.load_model("../model/HeartDiseaseor_model.keras"),
-        'Stroke'          :  tf.keras.models.load_model("../model/Stroke_model.keras"),
-        'Hipertensi'      :  tf.keras.models.load_model("../model/HighBP_model.keras"),
-        'Kolesterol Tinggi':  tf.keras.models.load_model("../model/HighChol_model.keras")
+        'Diabetes'        :  tf.keras.models.load_model(os.path.join(model_dir, "Diabetes_binary_model.keras")),
+        'Penyakit Jantung':  tf.keras.models.load_model(os.path.join(model_dir, "HeartDiseaseor_model.keras")),
+        'Stroke'          :  tf.keras.models.load_model(os.path.join(model_dir, "Stroke_model.keras")),
+        'Hipertensi'      :  tf.keras.models.load_model(os.path.join(model_dir, "HighBP_model.keras")),
+        'Kolesterol Tinggi':  tf.keras.models.load_model(os.path.join(model_dir, "HighChol_model.keras"))
     }
 
     scalers = {
-        'Diabetes'        :  joblib.load("../model/scaler_Diabetes_binary.pkl"),
-        'Penyakit Jantung':  joblib.load("../model/scaler_HeartDiseaseorAttack.pkl"),
-        'Stroke'          :  joblib.load("../model/scaler_Stroke.pkl"),
-        'Hipertensi'      :  joblib.load("../model/scaler_HighBP.pkl"),
-        'Kolesterol Tinggi': joblib.load("../model/scaler_HighChol.pkl")
+        'Diabetes'        :  joblib.load(os.path.join(model_dir, "scaler_Diabetes_binary.pkl")),
+        'Penyakit Jantung':  joblib.load(os.path.join(model_dir, "scaler_HeartDiseaseorAttack.pkl")),
+        'Stroke'          :  joblib.load(os.path.join(model_dir, "scaler_Stroke.pkl")),
+        'Hipertensi'      :  joblib.load(os.path.join(model_dir, "scaler_HighBP.pkl")),
+        'Kolesterol Tinggi': joblib.load(os.path.join(model_dir, "scaler_HighChol.pkl"))
     }
 
     thresholds = {
