@@ -48,24 +48,23 @@ joblib.dump(scaler, "../model/scaler_Diabetes_binary.pkl")
 
 # Build Model
 def build_model(input_dim):
-    model = keras.Sequential([
-        keras.layers.Input(shape=(input_dim,)),
+    inputs = keras.layers.Input(shape=(input_dim,))
+    dense1 = keras.layers.Dense(256, activation='relu')(inputs)
+    dense1 = keras.layers.BatchNormalization()(dense1)
+    dense1 = keras.layers.Dropout(0.4)(dense1)
 
-        keras.layers.Dense(256, activation='relu'),
-        keras.layers.BatchNormalization(),
-        keras.layers.Dropout(0.4),
+    dense2 = keras.layers.Dense(128, activation='relu')(dense1)
+    dense2 = keras.layers.BatchNormalization()(dense2)
+    dense2 = keras.layers.Dropout(0.3)(dense2)
 
-        keras.layers.Dense(128, activation='relu'),
-        keras.layers.BatchNormalization(),
-        keras.layers.Dropout(0.3),
-
-        keras.layers.Dense(64, activation='relu'),
-        keras.layers.Dense(1, activation='sigmoid')
-    ])
+    dense3 = keras.layers.Dense(64, activation='relu')(dense2)
+    outputs = keras.layers.Dense(1, activation='sigmoid')(dense3)
+    
+    model = keras.Model(inputs=inputs, outputs=outputs)
     model.compile(
-        optimizer=keras.optimizers.Adam(learning_rate=0.0005),
-        loss='binary_crossentropy',
-        metrics=['accuracy']
+            optimizer=keras.optimizers.Adam(learning_rate=0.0005),
+            loss='binary_crossentropy',
+            metrics=['accuracy']
     )
     return model
 
